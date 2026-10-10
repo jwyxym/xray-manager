@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      valid: ${{ steps.tag.outputs.valid }}
+    steps:
+      - name: Validate version tag
+        id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping invalid version tag: $RELEASE_TAG"
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: validate
+    if: needs.validate.outputs.valid == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            platform: windows-amd64
+            target: x86_64-pc-windows-msvc
+          - runner: ubuntu-24.04
+            platform: linux-amd64
+            target: x86_64-unknown-linux-gnu
+    defaults:
+      run:
+        shell: bash
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      PLATFORM: ${{ matrix.platform }}
+      TARGET: ${{ matrix.target }}
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal --target "$TARGET"
+
+      - name: Build release executable
+        run: cargo +stable build --locked --release --target "$TARGET"
+
+      - name: Download Xray runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download release-latest \
+            --repo jwyxym/Xray-core \
+            --pattern "xray-shared-$PLATFORM.zip" \
+            --dir upstream
+
+      - name: Package ZIP
+        run: python .github/scripts/package-release.py "$PLATFORM" "$TARGET" "$RELEASE_TAG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "dist/xray-manager-$RELEASE_TAG-windows-amd64.zip"
+          test -s "dist/xray-manager-$RELEASE_TAG-linux-amd64.zip"
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "$RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" dist/*.zip --clobber
+          gh release edit "$RELEASE_TAG" --draft=false

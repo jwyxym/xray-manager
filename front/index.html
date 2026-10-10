@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="color-scheme" content="light">
+	<title>Xray Manager · 管理控制台</title>
+	<link rel="stylesheet" href="/admin/style.css">
+	<script src="/admin/app.js" defer></script>
+</head>
+<body>
+	<section id="login-view" class="login-layout">
+		<div class="intro"><div class="brand"><span class="brand-mark">X</span> XRAY MANAGER</div><div><span class="eyebrow">ADMIN CONSOLE</span><h1>管理连接，<br>从这里开始。</h1><p>集中管理用户与激活码，<br>让每一次访问都有据可查。</p></div><small>专属管理入口 / ADMINISTRATORS ONLY</small></div>
+		<div class="login-panel"><form id="login-form" class="login-card">
+			<span class="eyebrow">欢迎回来</span><h2>登录管理控制台</h2><p class="muted">请使用管理员账户继续。</p>
+			<label>用户名<input name="username" autocomplete="username" required minlength="3" maxlength="64" placeholder="管理员用户名"></label>
+			<label>密码<input name="password" type="password" autocomplete="current-password" required placeholder="输入密码"></label>
+			<label>图片验证码<div class="captcha-row"><input name="captcha_code" inputmode="numeric" autocomplete="off" pattern="[0-9]{6}" maxlength="6" required placeholder="6 位数字"><button id="refresh-captcha" type="button" title="点击更换验证码" aria-label="更换图片验证码"><img id="captcha-image" alt="数字验证码，点击更换" width="162" height="54"></button></div></label>
+			<p id="login-error" class="error" role="alert"></p><button class="primary wide" type="submit">登录控制台 <span>→</span></button>
+			<p class="login-note">管理员账户由服务端配置创建。</p>
+		</form></div>
+	</section>
+	<div id="dashboard" class="dashboard" hidden>
+		<aside class="sidebar"><div class="brand"><span class="brand-mark">X</span> XRAY MANAGER</div><span class="nav-label">工作空间</span><nav aria-label="管理导航"><button data-view="codes" class="nav-button active" aria-current="page"><span>▦</span> 激活码管理</button><button data-view="users" class="nav-button"><span>◎</span> 用户管理</button></nav><div class="sidebar-bottom"><span class="avatar">A</span><div><strong id="admin-name">管理员</strong><small>管理员账户</small></div><button id="logout" class="icon-button" aria-label="退出登录" title="退出登录">↗</button></div></aside>
+		<main class="workspace"><header class="topbar"><span>管理控制台 <span class="divider">/</span> <span id="breadcrumb">激活码管理</span></span><span class="admin-badge">ADMIN</span></header>
+			<div class="page-heading"><div><span class="eyebrow">WORKSPACE</span><h1 id="page-title">激活码管理</h1><p id="page-description" class="muted">创建激活码，查看兑换状态与使用记录。</p></div><button id="refresh" class="secondary">↻ 刷新列表</button></div>
+			<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+			<section id="codes-view">
+				<div class="stats"><article><span>本页激活码</span><strong id="codes-count">—</strong><small>当前列表记录</small></article><article><span>可兑换</span><strong id="codes-available">—</strong><small>尚未使用且未过期</small></article><article><span>已兑换</span><strong id="codes-used">—</strong><small>已被用户使用</small></article></div>
+				<section class="card generator"><div class="card-heading"><div><h2>生成激活码</h2><p class="muted">为每个激活码设置可增加的时长。</p></div><span class="pill">UUID</span></div><form id="generate-form" class="generate-form"><label>激活时长<div class="duration-input"><input name="duration" type="number" min="1" step="1" value="30" required><select name="unit" aria-label="时长单位"><option value="86400">天</option><option value="3600">小时</option><option value="1">秒</option></select></div></label><label>生成数量<input name="count" type="number" min="1" max="100" value="1" required></label><label>兑换截止时间（可选）<input name="expires" type="datetime-local"><small>按浏览器本地时间，不填则不限期</small></label><button type="submit" class="primary">＋ 生成激活码</button></form>
+					<div id="generated" class="generated" hidden><div class="card-heading"><strong>本次生成结果</strong><button id="copy-generated" class="secondary" type="button">复制全部</button></div><textarea id="generated-codes" readonly rows="4" aria-label="本次生成的激活码"></textarea><p id="generated-summary" class="muted"></p></div>
+				</section>
+				<section class="card"><div class="card-heading"><div><h2>激活码记录</h2><p class="muted">每页最多 100 条，按创建时间倒序。</p></div></div><div class="table-wrap"><table><thead><tr><th>激活码</th><th>激活时长</th><th>状态</th><th>兑换截止</th><th>使用人 / 使用时间</th><th>操作</th></tr></thead><tbody id="codes-body"></tbody></table></div><div class="pagination"><span id="codes-page"></span><div><button data-page="codes:-1" class="secondary">上一页</button><button data-page="codes:1" class="secondary">下一页</button></div></div></section>
+			</section>
+			<section id="users-view" hidden><section class="card"><div class="card-heading"><div><h2>用户账户</h2><p class="muted">查看激活状态，管理普通用户的访问权限。</p></div><span id="users-count" class="pill">—</span></div><div class="table-wrap"><table><thead><tr><th>用户</th><th>角色</th><th>账户状态</th><th>激活到期</th><th>注册时间</th><th>操作</th></tr></thead><tbody id="users-body"></tbody></table></div><div class="pagination"><span id="users-page"></span><div><button data-page="users:-1" class="secondary">上一页</button><button data-page="users:1" class="secondary">下一页</button></div></div></section></section>
+			<footer>XRAY MANAGER <span>管理控制台</span></footer>
+		</main>
+	</div>
+	<noscript>管理控制台需要启用 JavaScript。</noscript>
+</body>
+</html>

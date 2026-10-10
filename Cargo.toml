@@ -1,0 +1,29 @@
+[package]
+name = "xray-manager"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+x25519-dalek = "2"
+argon2 = "0.5"
+axum = "0.8"
+clap = { version = "4", features = ["derive", "env"] }
+libloading = "0.8"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+rand = "0.8"
+prost = "0.13"
+sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-mysql", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm-migration = { version = "1.1", default-features = false, features = ["sqlx-sqlite", "sqlx-mysql", "sqlx-postgres", "runtime-tokio-rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+toml = "0.8"
+tonic = { version = "0.12", features = ["transport"] }
+tower-http = { version = "0.6", features = ["trace", "set-header"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4"] }

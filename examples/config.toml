@@ -1,0 +1,70 @@
+listen = "127.0.0.1:8080"
+database_url = "sqlite://xray.db?mode=rwc"
+token_ttl_seconds = 604800
+session_ttl_seconds = 86400
+heartbeat_timeout_seconds = 90
+connect_grace_seconds = 120
+offline_grace_seconds = 60
+cleanup_interval_seconds = 10
+
+[admin]
+username = "admin"
+password = "REPLACE_WITH_YOUR_PASSWORD"
+
+[smtp]
+host = "YOUR_SMTP_HOST"
+port = 465
+username = "YOUR_SMTP_HOST"
+password = "YOUR_SMTP_PASSWORD_OR_AUTHORIZATION_CODE"
+from = "EMAIL_SENDER <YOUR_SMTP_USER>"
+title = "Xray Manager 验证码"
+body = """
+您的验证码为：{:?}
+
+验证码 10 分钟内有效，请勿向他人透露。
+如果不是您本人操作，请忽略此邮件。
+"""
+
+[xray]
+# public_address = "YOUR_SERVER_IP_OR_DOMAIN"
+flow = "xtls-rprx-vision"
+fingerprint = "chrome"
+
+[xray.server.log]
+loglevel = "warning"
+
+[xray.server.api]
+listen = "127.0.0.1:10085"
+
+[[xray.server.inbounds]]
+tag = "managed-vless"
+listen = "0.0.0.0"
+port = 1443
+protocol = "vless"
+
+[xray.server.inbounds.settings]
+clients = []
+decryption = "none"
+
+[xray.server.inbounds.streamSettings]
+network = "raw"
+security = "reality"
+
+[xray.server.inbounds.streamSettings.realitySettings]
+show = false
+target = "SNI_URL:SNI_URL_PORT"
+xver = 0
+serverNames = ["SNI_URL"]
+privateKey = "YOUR_REALITY_PRIVATE_KEY"
+shortIds = ["SHORT_ID"]
+
+[xray.server.inbounds.sniffing]
+enabled = true
+destOverride = ["http", "tls", "quic"]
+
+[[xray.server.outbounds]]
+protocol = "freedom"
+tag = "direct"
+
+[xray.server.outbounds.streamSettings.sockopt]
+domainStrategy = "UseIPv4v6"

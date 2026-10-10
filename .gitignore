@@ -1,0 +1,9 @@
+/target
+/config.toml
+/*.json
+/*.db
+/*.db-shm
+/*.db-wal
+/*.so
+/*.dll
+/*.h
