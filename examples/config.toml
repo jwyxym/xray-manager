@@ -26,6 +26,7 @@ body = """
 """
 
 [xray]
+# library = "./xray.so"
 # public_port = 443
 # public_address = "YOUR_SERVER_IP"
 flow = "xtls-rprx-vision"
