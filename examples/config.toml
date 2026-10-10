@@ -3,8 +3,6 @@ database_url = "sqlite://xray.db?mode=rwc"
 token_ttl_seconds = 604800
 session_ttl_seconds = 86400
 heartbeat_timeout_seconds = 90
-connect_grace_seconds = 120
-offline_grace_seconds = 60
 cleanup_interval_seconds = 10
 
 [admin]

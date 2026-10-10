@@ -30,24 +30,7 @@ async fn inspect(s: &AppState, id: String) -> anyhow::Result<()> {
 		else if row.heartbeat_at + s.config.heartbeat_timeout_seconds <= timestamp { Some("heartbeat_timeout") }
 		else { None };
 	if let Some(reason) = reason { return close(s, row, reason).await; }
-	// Transport/RPC errors are not evidence that a user is offline.
-	let online = s.xray.online(&row.email).await?;
-	if online > 0 {
-		if !row.seen_online || row.offline_since.is_some() {
-			let mut record: sessions::ActiveModel = row.into();
-			record.seen_online = Set(true);
-			record.offline_since = Set(None);
-			record.update(&s.db).await?;
-		}
-	} else if !row.seen_online {
-		if timestamp >= row.created_at + s.config.connect_grace_seconds { close(s, row, "never_connected").await?; }
-	} else if let Some(since) = row.offline_since {
-		if timestamp >= since + s.config.offline_grace_seconds { close(s, row, "offline").await?; }
-	} else {
-		let mut record: sessions::ActiveModel = row.into();
-		record.offline_since = Set(Some(timestamp));
-		record.update(&s.db).await?;
-	}
+	// Heartbeats determine liveness; idle proxy connections do not close sessions.
 	Ok(())
 }
 

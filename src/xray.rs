@@ -2,7 +2,7 @@ use std::{ffi::{CStr, CString, c_char, c_int}, mem::ManuallyDrop, path::Path, ti
 use anyhow::Context;
 use libloading::Library;
 use prost::Message;
-use tonic::{Code, client::Grpc, codec::ProstCodec, transport::{Channel, Endpoint}};
+use tonic::{client::Grpc, codec::ProstCodec, transport::{Channel, Endpoint}};
 use crate::config::XrayConfig;
 
 // ABI from the supplied xray-shared-windows-amd64/xray.h.
@@ -99,19 +99,6 @@ struct GetUsers {
 }
 #[derive(Clone, PartialEq, Message)]
 struct Users { #[prost(message, repeated, tag="1")] users: Vec<User> }
-#[derive(Clone, PartialEq, Message)]
-struct GetStats {
-	#[prost(string, tag="1")] name: String,
-	#[prost(bool, tag="2")] reset: bool,
-}
-#[derive(Clone, PartialEq, Message)]
-struct Stat {
-	#[prost(string, tag="1")] name: String,
-	#[prost(int64, tag="2")] value: i64,
-}
-#[derive(Clone, PartialEq, Message)]
-struct Stats { #[prost(message, optional, tag="1")] stat: Option<Stat> }
-
 #[derive(Clone)]
 pub struct Xray {
 	channel: Channel,
@@ -125,7 +112,6 @@ impl Xray {
 		let result = Self { channel, config: config.clone() };
 		let _: Users = result.rpc("/xray.app.proxyman.command.HandlerService/GetInboundUsers",
 			GetUsers { tag: config.inbound_tag.clone(), email: String::new() }).await?;
-		result.online("manager-capability-probe").await.context("Xray must support GetStatsOnline")?;
 		Ok(result)
 	}
 
@@ -162,13 +148,4 @@ impl Xray {
 		Ok(())
 	}
 
-	pub async fn online(&self, email: &str) -> anyhow::Result<i64> {
-		let result: Result<Stats, _> = self.rpc("/xray.app.stats.command.StatsService/GetStatsOnline",
-			GetStats { name: format!("user>>>{email}>>>online"), reset: false }).await;
-		match result {
-			Ok(stats) => Ok(stats.stat.context("missing online statistic")?.value),
-			Err(e) if e.code() == Code::NotFound => Ok(0),
-			Err(e) => Err(e.into()),
-		}
-	}
 }

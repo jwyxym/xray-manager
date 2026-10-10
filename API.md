@@ -92,7 +92,7 @@ Token 为登录接口返回的 64 字符不透明字符串，不是 JWT。`Beare
 }
 ```
 
-`status` 为 `provisioning`（正在创建）、`active`（账户可用）、`closing`（等待清理）或 `closed`（已关闭）。`active` 不保证当前存在代理连接。`seen_online` 表示后台曾观察到在线，不表示此刻在线。`closed_at`、`close_reason` 在尚未赋值时为 null。
+`status` 为 `provisioning`（正在创建）、`active`（账户可用）、`closing`（等待清理）或 `closed`（已关闭）。`active` 不保证当前存在代理连接。`seen_online` 保留用于兼容历史记录；当前版本不再采样代理在线状态，新会话保持 false，不能用它判断连接是否可用。`closed_at`、`close_reason` 在尚未赋值时为 null。
 
 会话对象不包含临时凭据；凭据仅在创建连接成功的响应中返回一次。
 
@@ -554,8 +554,6 @@ curl -X POST http://127.0.0.1:8080/api/admin/users/USER_ID/disabled \
 
 | 条件 | 行为/关闭原因 |
 |---|---|
-| 创建后超过 `connect_grace_seconds`，始终未观察到在线 | `never_connected` |
-| 曾在线，随后持续零在线达到 `offline_grace_seconds` | `offline` |
 | 上次心跳距今达到 `heartbeat_timeout_seconds` | `heartbeat_timeout` |
 | 会话固定有效期结束 | `session_expired` |
 | 用户激活到期、被禁用或用户记录不存在 | `activation_expired_or_disabled` |
@@ -567,7 +565,7 @@ curl -X POST http://127.0.0.1:8080/api/admin/users/USER_ID/disabled \
 
 后台按 `cleanup_interval_seconds` 轮询，操作失败会重试，关闭不保证瞬时完成。已记录的关闭原因通常保留；重启协调会将遗留未关闭会话的原因设置为 `server_restarted`。
 
-在线判断使用 Xray 的在线统计，不是“最近有没有流量”。统计查询失败不当作离线。心跳正常也不能阻止激活到期、会话到期或离线清理。服务重启后前端需要重新请求连接。
+连接存活只按前端心跳判断，不再因没有代理请求或在线统计为零而清理。旧配置中的 `connect_grace_seconds` 和 `offline_grace_seconds` 可保留，但不再生效。心跳只更新 `heartbeat_at`，不延长固定的 `expires_at`；激活到期、会话到期、禁用及主动关闭仍会清理代理账户。服务重启后前端需要重新请求连接。
 
 ## 10. 错误响应
 

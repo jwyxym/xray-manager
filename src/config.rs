@@ -25,8 +25,11 @@ pub struct Config {
 	pub token_ttl_seconds: i64,
 	pub session_ttl_seconds: i64,
 	pub heartbeat_timeout_seconds: i64,
-	pub connect_grace_seconds: i64,
-	pub offline_grace_seconds: i64,
+	// Accept legacy online timeout settings; heartbeat-only cleanup ignores them.
+	#[serde(default, rename = "connect_grace_seconds")]
+	_connect_grace_seconds: Option<i64>,
+	#[serde(default, rename = "offline_grace_seconds")]
+	_offline_grace_seconds: Option<i64>,
 	pub cleanup_interval_seconds: u64,
 	#[serde(default)]
 	pub admin: Option<AdminConfig>,
@@ -164,8 +167,8 @@ impl Config {
 		ensure!(!config.xray.inbound_tag.is_empty(), "inbound_tag cannot be empty");
 		ensure!(config.xray.public_port.is_some_and(|port| port > 0), "invalid public port");
 		ensure!(config.xray.client_stream_settings.is_object(), "client_stream_settings must be an object");
-		ensure!([config.token_ttl_seconds, config.session_ttl_seconds, config.heartbeat_timeout_seconds,
-			config.connect_grace_seconds, config.offline_grace_seconds].iter().all(|v| (10..=31_536_000).contains(v)), "timeouts must be 10..31536000 seconds");
+		ensure!([config.token_ttl_seconds, config.session_ttl_seconds, config.heartbeat_timeout_seconds]
+			.iter().all(|v| (10..=31_536_000).contains(v)), "timeouts must be 10..31536000 seconds");
 		ensure!((1..=60).contains(&config.cleanup_interval_seconds), "cleanup interval must be 1..60 seconds");
 		Ok(config)
 	}
