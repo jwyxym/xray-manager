@@ -26,7 +26,8 @@ body = """
 """
 
 [xray]
-# public_address = "YOUR_SERVER_IP_OR_DOMAIN"
+# public_port = 443
+# public_address = "YOUR_SERVER_IP"
 flow = "xtls-rprx-vision"
 fingerprint = "chrome"
 

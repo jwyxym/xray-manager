@@ -72,8 +72,8 @@ pub struct XrayConfig {
 	pub api_listen: SocketAddr,
 	#[serde(default)]
 	pub public_address: Option<String>,
-	#[serde(skip)]
-	pub public_port: u16,
+	#[serde(default)]
+	pub public_port: Option<u16>,
 	#[serde(skip)]
 	pub protocol: String,
 	#[serde(default)]
@@ -96,7 +96,9 @@ impl XrayConfig {
 		let inbound = managed[0];
 		self.inbound_tag = inbound["tag"].as_str().context("managed inbound requires tag")?.into();
 		self.protocol = inbound["protocol"].as_str().unwrap().into();
-		self.public_port = u16::try_from(inbound["port"].as_u64().context("inbound port must be an integer")?)?;
+		let inbound_port = u16::try_from(inbound["port"].as_u64().context("inbound port must be an integer")?)?;
+		ensure!(inbound_port > 0, "invalid inbound port");
+		self.public_port = Some(self.public_port.unwrap_or(inbound_port));
 		self.api_listen = self.server["api"]["listen"].as_str().context("xray.server.api.listen is required")?.parse()?;
 		ensure!(inbound["settings"]["clients"].as_array().is_some_and(|v| v.is_empty()), "managed clients must be empty");
 		let stream = &inbound["streamSettings"];
@@ -160,7 +162,7 @@ impl Config {
 		ensure!(config.xray.api_listen.ip().is_loopback(), "Xray API must listen on loopback");
 		ensure!(matches!(config.xray.protocol.as_str(), "vless" | "trojan"), "protocol must be vless or trojan");
 		ensure!(!config.xray.inbound_tag.is_empty(), "inbound_tag cannot be empty");
-		ensure!(config.xray.public_port > 0, "invalid public port");
+		ensure!(config.xray.public_port.is_some_and(|port| port > 0), "invalid public port");
 		ensure!(config.xray.client_stream_settings.is_object(), "client_stream_settings must be an object");
 		ensure!([config.token_ttl_seconds, config.session_ttl_seconds, config.heartbeat_timeout_seconds,
 			config.connect_grace_seconds, config.offline_grace_seconds].iter().all(|v| (10..=31_536_000).contains(v)), "timeouts must be 10..31536000 seconds");

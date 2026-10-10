@@ -26,6 +26,21 @@ def main():
   archive = Path("upstream") / f"xray-shared-{platform}.zip"
   destination = Path("dist") / f"xray-manager-{tag}-{platform}.zip"
 
+  # Ship examples from the checkout, never the root local config.toml.
+  extras = {name: Path(name) for name in ("LICENSE", "THIRD_PARTY_LICENSES.md")}
+  examples = Path("examples")
+  if not examples.is_dir():
+    raise ValueError("Missing examples directory")
+  for path in sorted(examples.rglob("*")):
+    if path.is_file():
+      if path.is_symlink():
+        raise ValueError(f"Symlink is not allowed in examples: {path}")
+      extras[path.as_posix()] = path
+  if "examples/config.toml" not in extras:
+    raise ValueError("Missing examples/config.toml")
+  for name, path in extras.items():
+    if not path.is_file():
+      raise ValueError(f"Missing release document: {name}")
   with ZipFile(archive) as source:
     files = {}
     for member in source.infolist():
@@ -35,9 +50,12 @@ def main():
       if path.is_absolute() or ".." in path.parts or "\\" in member.filename or ":" in member.filename:
         raise ValueError(f"Unsafe upstream path: {member.filename}")
       name = path.as_posix()
-      if name in files or name == executable:
+      if name in files or name == executable or (name in extras and name != "LICENSE"):
         raise ValueError(f"Duplicate or reserved upstream path: {name}")
       files[name] = member
+    required.add("LICENSE")
+    if windows:
+      required.add("LICENSE-Wintun.txt")
     for name in required:
       if name not in files or files[name].file_size == 0:
         raise ValueError(f"Missing required upstream runtime: {name}")
@@ -45,7 +63,13 @@ def main():
     with ZipFile(destination, "w", compression=ZIP_DEFLATED) as output:
       for name, member in files.items():
         # Keep upstream DLL dependencies, licenses and documentation together.
-        output.writestr(member, source.read(member))
+        data = source.read(member)
+        if name == "LICENSE":
+          output.writestr("LICENSE-Xray", data)
+        else:
+          output.writestr(member, data)
+      for name, path in extras.items():
+        output.write(path, name)
       info = ZipInfo(executable)
       info.create_system = 3
       info.external_attr = (stat.S_IFREG | 0o755) << 16
