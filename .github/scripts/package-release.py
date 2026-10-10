@@ -27,7 +27,7 @@ def main():
   destination = Path("dist") / f"xray-manager-{tag}-{platform}.zip"
 
   # Ship examples from the checkout, never the root local config.toml.
-  extras = {name: Path(name) for name in ("LICENSE", "THIRD_PARTY_LICENSES.md")}
+  extras = {"LICENSE": Path("LICENSE")}
   examples = Path("examples")
   if not examples.is_dir():
     raise ValueError("Missing examples directory")
