@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use axum::{Json, Router, extract::{State, Path, Query, DefaultBodyLimit}, http::{HeaderMap, StatusCode}, routing::{get, post, delete}};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait, Condition, sea_query::Expr};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, PaginatorTrait, Set, TransactionTrait, Condition, sea_query::Expr};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -226,8 +226,9 @@ async fn connect(State(s): Shared, headers: HeaderMap) -> Reply {
 	let user = authenticate(&s, &headers).await?;
 	let timestamp = now();
 	if user.active_until <= timestamp { return Err(ApiError(StatusCode::FORBIDDEN, "activation_required")); }
-	if sessions::Entity::find().filter(sessions::Column::UserId.eq(&user.id))
-		.filter(sessions::Column::Status.ne("closed")).one(&s.db).await?.is_some() {
+	let session_count = sessions::Entity::find().filter(sessions::Column::UserId.eq(&user.id))
+		.filter(sessions::Column::Status.ne("closed")).count(&s.db).await?;
+	if session_count >= s.config.max_sessions_per_user {
 		return Err(conflict("connection_already_exists_or_cleanup_pending"));
 	}
 	let id = Uuid::new_v4().to_string();

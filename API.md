@@ -331,7 +331,7 @@ curl -X POST http://127.0.0.1:8080/api/connections \
 	-H 'Authorization: Bearer USER_TOKEN'
 ```
 
-无需请求体。要求用户当前已激活。每个用户最多一个未关闭会话，`provisioning` 和 `closing` 也占用这个名额。
+无需请求体。要求用户当前已激活。每个用户的未关闭会话上限由 config.toml 顶层的 `max_sessions_per_user` 配置，省略时默认为 1，必须为正整数。例如设置 `max_sessions_per_user = 3` 可同时创建 3 个会话；`provisioning`、`active` 和 `closing` 都占用名额。每个会话有独立的临时凭据、心跳和关闭接口。配置修改后需重启服务。
 
 以下是未配置 `xray.public_address` 时的 VLESS + REALITY 响应示例，公钥与 UUID 仅示意结构：
 
@@ -394,7 +394,7 @@ curl -X POST http://127.0.0.1:8080/api/connections \
 
 Trojan 模式的目标配置位于 `config.outbounds[0].settings.servers[0]`，其中包含 `port`、临时 `password` 以及可选的 `address`，而不是 VLESS 的 `vnext` 和 `users`。
 
-常见错误：未激活为 `403 activation_required`；已有未关闭会话为 `409 connection_already_exists_or_cleanup_pending`；Xray 创建失败为 `503 xray_unavailable`。
+常见错误：未激活为 `403 activation_required`；未关闭会话数量已达上限（含等待清理）为 `409 connection_already_exists_or_cleanup_pending`；Xray 创建失败为 `503 xray_unavailable`。
 
 创建请求失败、超时或响应丢失时，不要假定账户一定没创建。先查询自己的会话列表，关闭旧会话或等待后台清理后再请求。临时凭据无法通过列表重新读取。
 
@@ -601,7 +601,7 @@ curl -X POST http://127.0.0.1:8080/api/admin/users/USER_ID/disabled \
 | 409 | `email_changed_retry` | 当前绑定发生变化，重新开始换绑流程 |
 | 409 | `password_changed_retry` | 密码已被并发修改 |
 | 409 | `activation_code_used_or_expired` | 激活码已使用或过期 |
-| 409 | `connection_already_exists_or_cleanup_pending` | 存在未关闭会话 |
+| 409 | `connection_already_exists_or_cleanup_pending` | 未关闭会话数量已达 max_sessions_per_user 上限（含等待清理） |
 | 409 | `session_expired_or_closed` | 心跳目标不可继续保活 |
 | 429 | `auth_busy` | 密码处理并发槽位已满，稍后重试 |
 | 429 | `verification_rate_limited` | 验证码限额或处理容量已满 |

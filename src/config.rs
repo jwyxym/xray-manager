@@ -15,6 +15,7 @@ compile_error!("xray-manager supports Windows, Linux and macOS");
 
 fn default_library() -> PathBuf { PathBuf::from(DEFAULT_LIBRARY) }
 fn default_api() -> SocketAddr { "127.0.0.1:10085".parse().unwrap() }
+fn default_max_sessions_per_user() -> u64 { 1 }
 fn default_fingerprint() -> String { "chrome".into() }
 
 #[derive(Clone, Deserialize)]
@@ -31,6 +32,8 @@ pub struct Config {
 	#[serde(default, rename = "offline_grace_seconds")]
 	_offline_grace_seconds: Option<i64>,
 	pub cleanup_interval_seconds: u64,
+	#[serde(default = "default_max_sessions_per_user")]
+	pub max_sessions_per_user: u64,
 	#[serde(default)]
 	pub admin: Option<AdminConfig>,
 	#[serde(default)]
@@ -169,6 +172,7 @@ impl Config {
 		ensure!(config.xray.client_stream_settings.is_object(), "client_stream_settings must be an object");
 		ensure!([config.token_ttl_seconds, config.session_ttl_seconds, config.heartbeat_timeout_seconds]
 			.iter().all(|v| (10..=31_536_000).contains(v)), "timeouts must be 10..31536000 seconds");
+		ensure!(config.max_sessions_per_user > 0, "max_sessions_per_user must be greater than zero");
 		ensure!((1..=60).contains(&config.cleanup_interval_seconds), "cleanup interval must be 1..60 seconds");
 		Ok(config)
 	}

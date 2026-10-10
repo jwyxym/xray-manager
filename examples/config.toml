@@ -4,6 +4,7 @@ token_ttl_seconds = 604800
 session_ttl_seconds = 86400
 heartbeat_timeout_seconds = 90
 cleanup_interval_seconds = 10
+max_sessions_per_user = 1
 
 [admin]
 username = "admin"
